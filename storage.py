@@ -53,7 +53,7 @@ class TracksStorage:
         if not message.document:
             cls.stop(connection, cursor)
             return OnAddTrack.NoDocument, ""
-        if message.document.mime_type not in ("application/gpx+xml", "application/octet-stream"):
+        if not (message.document.file_name or "-").lower().endswith(".gpx"):
             cls.stop(connection, cursor)
             return OnAddTrack.NotGPX, message.document.mime_type or "Unknown"
         cursor.execute("select count(*) as count from tracks where chat_id = ?", [message.chat.id])
