@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional, Self
 import sqlite3
 
-from aiogram.types import Document, Message
+from aiogram.types import Message
 
 class OnAddTrack(enum.Enum):
     NoDocument = -1
@@ -56,6 +56,9 @@ class TracksStorage:
         if not (message.document.file_name or "-").lower().endswith(".gpx"):
             cls.stop(connection, cursor)
             return OnAddTrack.NotGPX, message.document.mime_type or "Unknown"
+        if (message.document.file_size or 0) > 1024 * 1024 * 15:  # 15 megabytes should be enough for everyone
+            cls.stop(connection, cursor)
+            return OnAddTrack.NotGPX, "Слишком большой файл"
         cursor.execute("select count(*) as count from tracks where chat_id = ?", [message.chat.id])
         count = cursor.fetchone()[0]
         if count > 10:
