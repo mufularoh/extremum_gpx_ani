@@ -3,3 +3,5 @@ config.json
 db.sql
 files
 __pycache__
+node_modules
+run_cropper_dev.sh

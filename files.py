@@ -2,22 +2,10 @@ import enum
 import asyncio
 from pathlib import Path
 from typing import Union
-from aiogram import Bot
 
 from settings import Settings
-from utils import MessageType, debug_output
 from uuid import uuid1
 
-async def load_file(bot: Bot, document_id: str, unique_id: str) -> Path:
-    base = Path("./files")
-    debug_output(f"Downloading {unique_id}", MessageType.Info)
-    if not base.exists():
-        base.mkdir()
-
-    destination = base / f"{unique_id}.gpx"
-    if not destination.exists():
-        await bot.download(document_id, destination)
-    return destination
 
 class AnimationResult(enum.Enum):
     Error = enum.auto()

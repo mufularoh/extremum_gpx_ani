@@ -4,7 +4,6 @@ import json
 from dataclasses import dataclass
 from typing import Self
 
-from utils import MessageType, debug_output
 
 
 @dataclass
@@ -17,7 +16,7 @@ class Settings:
     def load(cls) -> Self:
         p = Path("./config.json")
         if not p.exists():
-            debug_output("Please define config.json based on config_sample.json", MessageType.Error)
+            print("Please define config.json based on config_sample.json")
             exit(1)
         with p.open("r") as f:
             data = json.load(f)
@@ -28,5 +27,5 @@ class Settings:
                     animator_params=data["animator_params"]
                 )
             except KeyError:
-                 debug_output("Please make sure that all fields from config_sample.json are set in config.json", MessageType.Error)
+                 print("Please make sure that all fields from config_sample.json are set in config.json")
                  exit(1)

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./cropper/static/",
+    "paths": {
+    },
+    "moduleResolution": "node",
+    "checkJs": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "strictNullChecks": true,
+    "resolveJsonModule": true
+  },
+  "exclude": []
+}

@@ -1,21 +1,23 @@
 import asyncio
 from pathlib import Path
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from files import AnimationResult, animate_tracks, load_file
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from download import load_file
+from files import AnimationResult, animate_tracks
 from settings import Settings
+from bot import get_bot
 
 
-from aiogram import Bot, Dispatcher
+from aiogram import Dispatcher
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BotCommand, FSInputFile, Message
+from aiogram.types import BotCommand, FSInputFile, InlineKeyboardButton, Message, WebAppInfo
 
 from storage import OnAddTrack, TracksStorage
 from utils import MessageType, debug_output
 
 dp = Dispatcher()
+cropper_info = WebAppInfo(url="https://alexron.in:5000")
 settings = Settings.load()
-bot = Bot(token=settings.api_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot = get_bot(settings.api_token)
 
 @dp.message(CommandStart())
 async def start_command_handler(message: Message):
@@ -26,10 +28,13 @@ async def start_command_handler(message: Message):
 
 @dp.message(Command("list_tracks"))
 async def list_command_handler(message: Message):
-    tracks = TracksStorage.list_tracks(message)
+    tracks = TracksStorage.list_tracks(message.chat.id)
+    builder = InlineKeyboardBuilder([[
+        InlineKeyboardButton(text="Обрезать трек", web_app=cropper_info)
+    ]])
     if tracks:
         text = "\n".join([track.file_name for track in tracks])
-        await message.answer("Загруженные треки:\n" + text)
+        await message.answer("Загруженные треки:\n" + text, reply_markup=builder.as_markup())
     else:
         await message.answer("Треков нет!")
 
@@ -43,7 +48,7 @@ async def clear_command_handler(message: Message):
 async def animate_command_handler(message: Message):
     global bot
     global settings
-    tracks = TracksStorage.list_tracks(message)
+    tracks = TracksStorage.list_tracks(message.chat.id)
     if not tracks:
         await message.answer("Треки не загружены! Приложи их к сообщению")
         return

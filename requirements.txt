@@ -1,1 +1,6 @@
 aiogram
+gpxpy
+waitress
+flask[async]
+utm
+dart-sass

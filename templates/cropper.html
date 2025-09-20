@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="ru-RU">
+    <head>
+        <title>Extremum GPX Cropper</title>
+        <meta name="viewport" content="width=device-width, maximum-scale=5.0, minimum-scale=1.0, initial-scale=1.0">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <link rel="stylesheet" href="https://www.nerdfonts.com/assets/css/webfont.css" />
+        <style>
+        {{ css_code }}
+        </style>
+        <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+    </head>
+    <body>
+        <div id="outer">
+            <div id="map">
+                <div class="loading">
+                    <span>Загружаю треки...</span>
+                </div>
+            </div>
+            <div id="tracks_list">
+
+            </div>
+            <div id="controls">
+                <label for="start_position">Начало:</label>
+                <input type="range" min="1" max="100" id="start_position" />
+
+                <label for="end_position">Конец:</label>
+                <input type="range" min="1" max="100" id="end_position" />
+                <button id="cut_button" disabled>
+                    <span class="nf nf-fa-floppy_disk" />
+                    <span>Обрезать трек</span>
+                </button>
+                <button id="download_button" disabled>
+                    <span class="nf nf-cod-cloud_download" />
+                    <span>Скачать</span>
+                </button>
+                <button id="reset_button">
+                    <span class="nf nf-md-reload" />
+                    <span>Отменить правки</span>
+                </button>
+            </div>
+        </div>
+        <div id="loader">
+            
+        </div>
+
+
+        <script type="text/javascript" src="/static/cropper.js"></script>
+    </body>
+</html>

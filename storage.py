@@ -14,6 +14,7 @@ class OnAddTrack(enum.Enum):
 
 @dataclass
 class Track:
+    track_id: int
     file_name: str 
     document_id: str 
     unique_id: str
@@ -22,10 +23,10 @@ class Track:
         return json.dumps({"file_name": self.file_name, "document_id": self.document_id, "unique_id": self.unique_id})
 
     @classmethod
-    def load(cls, data: str) -> Optional[Self]:
+    def load(cls, id: int, data: str) -> Optional[Self]:
         try:
             d = json.loads(data)
-            return cls(file_name=d["file_name"], document_id=d["document_id"], unique_id=d["unique_id"])
+            return cls(track_id=id, file_name=d["file_name"], document_id=d["document_id"], unique_id=d["unique_id"])
         except:
             return None
 
@@ -65,6 +66,7 @@ class TracksStorage:
             cls.stop(connection, cursor)
             return OnAddTrack.TooMany, str(count)
         track = Track(
+            track_id=0,
             file_name=message.document.file_name or "unnamed.gpx",
             document_id=message.document.file_id,
             unique_id=message.document.file_unique_id
@@ -76,14 +78,27 @@ class TracksStorage:
         return OnAddTrack.Success, track.file_name
     
     @classmethod
-    def list_tracks(cls, message: Message) -> list[Track]:
+    def list_tracks(cls, chat_id: int) -> list[Track]:
         connection, cursor = cls.start()
-        cursor.execute("select data from tracks where chat_id = ?", [message.chat.id])
+        cursor.execute("select id, data from tracks where chat_id = ?", [chat_id])
         result = [x for x in [
-            Track.load(x[0]) for x in cursor.fetchall()
+            Track.load(x[0], x[1]) for x in cursor.fetchall()
         ] if x]
         cls.stop(connection, cursor)
         return result
+
+    @classmethod
+    def get_track(cls, id: int) -> Optional[Track]:
+        connection, cursor = cls.start()
+        cursor.execute("select id, data from tracks where id = ?", [id])
+        row = cursor.fetchone()
+        if row:
+            ret = Track.load(row[0], row[1])
+        else:
+            ret = None
+        cls.stop(connection, cursor)
+        return ret
+
     
     @classmethod
     def clear_tracks(cls, message: Message) -> None:
