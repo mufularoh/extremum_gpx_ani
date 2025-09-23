@@ -367,7 +367,7 @@ document.addEventListener("readystatechange", () => {
         }
         const manager = new TrackManager();
         if (userId) {
-            fetch(`/tracks/${userId}`, {
+            fetch(`/tracks/${userId}/`, {
                 method: "GET",
             }).then((resp) => {
                 if (resp.ok) {
