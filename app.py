@@ -15,8 +15,8 @@ from storage import OnAddTrack, TracksStorage
 from utils import MessageType, debug_output
 
 dp = Dispatcher()
-cropper_info = WebAppInfo(url="https://alexron.in:5000")
 settings = Settings.load()
+cropper_info = WebAppInfo(url=settings.app_location)
 bot = get_bot(settings.api_token)
 
 @dp.message(CommandStart())
@@ -106,5 +106,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    settings = Settings.load()
     asyncio.run(main())

@@ -1,6 +1,7 @@
 {
     "api_token": "BOT API TOKEN",
     "animator_executable": ["java", "-jar", "/path/to/gpx/animator.jar"],
+    "app_location": "https://gpx.extremum.site:5000",
     "animator_params": [
         "--margin", "20",
         "--width", "1280",
