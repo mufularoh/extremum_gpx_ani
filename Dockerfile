@@ -39,4 +39,6 @@ run echo "/app/env/bin/flask --app cropper run --cert=/app/fullchain.pem --key=/
 run chmod +x /app/flask.sh
 
 run chmod +x /app/env/lib/python3.12/site-packages/dartsass/./sass/linux-x64/dart-sass/sass
-
+run echo "/app/flask.sh < /dev/null &> /app/log.txt & disown ; /app/env/bin/python3 ./app.py" > /app/run.sh
+run chmod +x /app/run.sh
+# entrypoint /bin/bash /app/run.sh

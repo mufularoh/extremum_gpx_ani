@@ -25,7 +25,10 @@ async def represent_track(track_obj: storage.Track, b: Bot) -> dict:
     max_lat = 0
     max_lng = 0
     d = await download.load_file(b, track_obj.document_id, track_obj.unique_id)
-    reader = gpxpy.parse(d.read_text())
+    try:
+        reader = gpxpy.parse(d.read_text())
+    except gpxpy.gpx.GPXXMLSyntaxException:
+        return track_ret
     for track in reader.tracks:
         for segment in track.segments:
             pseg = []
@@ -124,6 +127,7 @@ async def crop_track():
             for point in segment.points:
                 if i >= start_index and i <= end_index:
                     segment_points_exist = True
+                    point.extensions = []  
                     w_segment.points.append(point)
                 i += 1
 
@@ -133,7 +137,6 @@ async def crop_track():
 
         if track_points_exist:
             writer.tracks.append(w_track)
-
     p.write_text(writer.to_xml())
 
     return await represent_track(track_db, b)
