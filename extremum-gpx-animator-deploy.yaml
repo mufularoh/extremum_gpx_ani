@@ -1,0 +1,171 @@
+# Kubernetes Deployment Manifest for Application
+#
+# PREREQUISITES:
+# - cert-manager installed and configured
+# - ingress-nginx-controller deployed
+#
+# ENVIRONMENT VARIABLE CONFIGURATION:
+# 1. Replace TELEGRAM_BOT_API_TOKEN with your actual Telegram bot token
+# 2. Update all occurrences of 'extremum.site' with your custom hostname
+#    (must resolve to the IP address of the ingress server where the microapp will be hosted)
+
+# Example of how to apply the manifest:
+# kubectl apply -f application-deployment.yaml
+
+# NOTE: Ensure that DNS records are properly configured for your chosen hostname
+# before deploying the application to avoid connectivity issues.
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: extremum-config
+  namespace: extremum
+data:
+  config.json: |
+    {
+        "api_token": "TELEGRAM_BOT_API_TOKEN", # Replace with actual token
+        "app_location": "https://extremum.site",
+        "animator_executable": ["/opt/gpx-animator/jre/bin/java", "-jar", "/opt/gpx-animator/gpx-animator-1.8.2-all.jar"],
+        "animator_params": [
+            "--margin", "20",
+            "--width", "1280",
+            "--height", "720",
+            "--viewport-inertia", "50",
+            "--speedup", "150",
+            "--tail-duration", "0",
+            "--tail-color-fadeout", "false",
+            "--fps", "30.0",
+            "--background-map-visibility", "0.5",
+            "--tms-url-template", "https://{switch:services,server}.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{zoom}/{y}/{x}",
+            "--attribution", "Created by Extremum GPX Animator"
+        ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extremum-gpxbot-deployment
+  namespace: extremum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extremum-gpxbot
+  template:
+    metadata:
+      labels:
+        app: extremum-gpxbot
+    spec:
+      containers:
+      - name: extremum
+        image: mufularoh/extremum-tools:gpxbot
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config.json
+          subPath: config.json
+        - name: files-volume
+          mountPath: /app/files
+        ports:
+          - name: gpxbot
+            containerPort: 5000
+            protocol: TCP
+
+      - name: cleaner
+        image: alpine:3.20
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            while true; do
+              find /app/files -type f -mmin +120 -delete
+              sleep 3600
+            done
+        volumeMounts:
+        - name: files-volume
+          mountPath: /app/files
+
+      volumes:
+      - name: config-volume
+        configMap:
+          name: extremum-config
+      - name: files-volume
+        emptyDir: {}
+
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+#  namespace: cert-manager
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ruslan@grinenko.ru
+    privateKeySecretRef:
+      name: letsencrypt
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: extremum-tls
+  namespace: extremum
+spec:
+  secretName: extremum-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - extremum.site
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpxbot-service
+  namespace: extremum
+  labels:
+    app: extremum-gpxbot
+spec:
+  ports:
+    - name: http-query
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: extremum-gpxbot
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gpxbot-ingress
+  namespace: extremum
+  labels:
+    app: gpxbot-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/websocket-services: gpxbot-service
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - extremum.site
+      secretName: extremum-tls
+  rules:
+  - host: extremum.site
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: gpxbot-service
+              port:
+                number: 5000
