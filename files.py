@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import enum
 import asyncio
 from pathlib import Path
@@ -22,6 +23,51 @@ async def animate_tracks(settings: Settings, files: list[Path]) -> tuple[Animati
             actual_files.append(f)
         elif parsed.waypoints:
             waypoints += parsed.waypoints
+
+
+
+
+    times: list[datetime] = []
+    parsed_files: list[tuple[Path, gpxpy.gpx.GPX]] = []
+    for actual_file in actual_files:
+        parsed = gpxpy.parse(actual_file.read_text())
+        parsed_files.append((actual_file, parsed))
+        for track in parsed.tracks:
+            for segment in track.segments:
+                for point in segment.points:
+                    if point.time:
+                        times.append(point.time)
+    recent_actual_files: list[Path] = []
+    to_compare_delta = timedelta(hours=12)
+    if times:
+        max_time = max(times)
+        for file, parsed in parsed_files:
+            new_tracks: list[gpxpy.gpx.GPXTrack] = []
+            for track in parsed.tracks:
+                new_segments: list[gpxpy.gpx.GPXTrackSegment] = []
+                for segment in track.segments:
+                    new_points: list[gpxpy.gpx.GPXTrackPoint] = []
+                    for point in segment.points:
+                        if point.time is not None and max_time - point.time < to_compare_delta:
+                            new_points.append(point)
+                    if new_points:
+                        new_segments.append(gpxpy.gpx.GPXTrackSegment(new_points))
+                if new_segments:
+                    new_track = gpxpy.gpx.GPXTrack(
+                        name=track.name,
+                        description=track.description,
+                    )
+                    new_track.segments = new_segments
+                    new_tracks.append(new_track)
+            if new_tracks:
+                parsed.tracks = new_tracks
+                file.write_text(parsed.to_xml())
+                recent_actual_files.append(file)
+        actual_files = recent_actual_files
+
+
+
+
     if waypoints:
         if not actual_files:
             return AnimationResult.Error, "Нет файлов, содержащих треки!"
@@ -30,6 +76,8 @@ async def animate_tracks(settings: Settings, files: list[Path]) -> tuple[Animati
         for wp in waypoints:
             writer.waypoints.append(wp)
         to_enhance.write_text(writer.to_xml())
+
+
     colors = [
         "#1b5e20",
         "#880e4f",
