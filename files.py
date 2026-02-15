@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import enum
 import asyncio
 from pathlib import Path
@@ -14,6 +14,8 @@ class AnimationResult(enum.Enum):
     Error = enum.auto()
     Success = enum.auto()
 
+SEGMENT_TIME_INTERVAL = timedelta(hours=6)
+
 async def animate_tracks(settings: Settings, files: list[Path]) -> tuple[AnimationResult, Union[str, Path]]:
     actual_files: list[Path] = []
     waypoints: list[gpxpy.gpx.GPXWaypoint] = []
@@ -25,33 +27,30 @@ async def animate_tracks(settings: Settings, files: list[Path]) -> tuple[Animati
             waypoints += parsed.waypoints
 
 
-
-
-    times: list[datetime] = []
-    parsed_files: list[tuple[Path, gpxpy.gpx.GPX]] = []
     for actual_file in actual_files:
         parsed = gpxpy.parse(actual_file.read_text())
-        parsed_files.append((actual_file, parsed))
+        max_time = datetime(2001, 1, 1, tzinfo=timezone.utc)
+        time_found = False 
+        overwrite_required = False 
         for track in parsed.tracks:
             for segment in track.segments:
                 for point in segment.points:
-                    if point.time:
-                        times.append(point.time)
-    recent_actual_files: list[Path] = []
-    to_compare_delta = timedelta(hours=12)
-    if times:
-        max_time = max(times)
-        for file, parsed in parsed_files:
+                    if point.time and point.time > max_time:
+                        max_time = point.time
+                        time_found = True
+        if time_found:
             new_tracks: list[gpxpy.gpx.GPXTrack] = []
             for track in parsed.tracks:
                 new_segments: list[gpxpy.gpx.GPXTrackSegment] = []
                 for segment in track.segments:
-                    new_points: list[gpxpy.gpx.GPXTrackPoint] = []
-                    for point in segment.points:
-                        if point.time is not None and max_time - point.time < to_compare_delta:
-                            new_points.append(point)
-                    if new_points:
-                        new_segments.append(gpxpy.gpx.GPXTrackSegment(new_points))
+                    try:
+                        latest_point_time = max([point.time for point in segment.points if point.time])
+                        if max_time - latest_point_time < SEGMENT_TIME_INTERVAL:
+                            new_segments.append(segment)
+                        else:
+                            overwrite_required = True 
+                    except ValueError:
+                        overwrite_required = True 
                 if new_segments:
                     new_track = gpxpy.gpx.GPXTrack(
                         name=track.name,
@@ -59,11 +58,9 @@ async def animate_tracks(settings: Settings, files: list[Path]) -> tuple[Animati
                     )
                     new_track.segments = new_segments
                     new_tracks.append(new_track)
-            if new_tracks:
+            if overwrite_required:
                 parsed.tracks = new_tracks
-                file.write_text(parsed.to_xml())
-                recent_actual_files.append(file)
-        actual_files = recent_actual_files
+                actual_file.write_text(parsed.to_xml())
 
 
 
